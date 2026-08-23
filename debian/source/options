@@ -1,0 +1,6 @@
+# Build artifacts that may remain in the tree after a local (non-clean)
+# build; do not let dpkg-source treat them as upstream modifications.
+extend-diff-ignore = "(^|/)node_modules(/|$)"
+extend-diff-ignore = "(^|/)dist(/|$)"
+extend-diff-ignore = "\.tsbuildinfo$"
+extend-diff-ignore = "(^|/)tsconfig\.base\.build\.json$"

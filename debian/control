@@ -1,0 +1,32 @@
+Source: pi-dev
+Section: devel
+Priority: optional
+Maintainer: Parrot Security <team@parrotsec.org>
+Build-Depends: debhelper-compat (= 13), nodejs (>= 20.19), npm
+Standards-Version: 4.7.2
+Rules-Requires-Root: no
+Homepage: https://pi.dev
+Vcs-Browser: https://github.com/earendil-works/pi
+Vcs-Git: https://github.com/earendil-works/pi.git
+
+Package: pi-dev
+Architecture: amd64 arm64
+Depends: nodejs (>= 20.19), ${misc:Depends}
+Suggests: git
+Description: AI agent harness and interactive coding-agent CLI
+ Pi (pi.dev) is an AI agent harness providing a unified multi-provider
+ LLM API (OpenAI, Anthropic, Google, Bedrock, ...), an agent runtime with
+ tool calling and state management, a terminal UI, and an interactive
+ coding-agent command-line program.
+ .
+ This package ships the pi coding agent CLI (/usr/bin/pi). The agent
+ offers read, bash, edit and write tools with session management, a
+ fullscreen transcript UI, and an extensible plugin system.
+ .
+ Configuration and per-user state live in ~/.pi (override with the
+ PI_CODING_AGENT_DIR environment variable).
+ .
+ The TypeScript toolchain needed to build pi is fetched from npm at build
+ time (the build needs network access); the npm runtime dependencies are
+ vendored into the source package (debian/vendor/) so the shipped runtime is
+ pinned and reproducible. The program runs on the system nodejs interpreter.

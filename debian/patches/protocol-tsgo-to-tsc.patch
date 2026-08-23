@@ -1,0 +1,20 @@
+--- a/packages/protocol/package.json
++++ b/packages/protocol/package.json
+@@ -17,7 +17,7 @@
+ 	],
+ 	"scripts": {
+ 		"clean": "shx rm -rf dist",
+-		"build": "tsgo -p tsconfig.build.json",
++		"build": "tsc -b tsconfig.build.json",
+ 		"test": "vitest --run",
+ 		"prepublishOnly": "npm run clean && npm run build"
+ 	},
+--- a/packages/protocol/tsconfig.build.json
++++ b/packages/protocol/tsconfig.build.json
+@@ -1,5 +1,5 @@
+ {
+-	"extends": "../../tsconfig.base.json",
++	"extends": "../../tsconfig.base.build.json",
+ 	"compilerOptions": {
+ 		"outDir": "./dist",
+ 		"rootDir": "./src"

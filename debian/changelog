@@ -1,0 +1,27 @@
+pi-dev (0.84.2-0parrot2) echo; urgency=medium
+
+  * Rebuild package against nodejs 20.19
+
+ -- Lorenzo "Palinuro" Faletra <palinuro@parrotsec.org>  Sun, 23 Aug 2026 22:15:02 +0200
+
+pi-dev (0.84.2-0parrot1) unstable; urgency=medium
+
+  * Initial Debian packaging of pi (pi.dev) v0.84.2.
+  * Build from the upstream source tarball with the classic TypeScript
+    compiler (tsc) instead of the upstream tsgo compiler, which is not
+    packaged in Debian.
+  * Runtime dependencies are vendored under debian/vendor and installed to
+    /usr/lib/pi/node_modules; the program runs on the system nodejs
+    (>= 20.19) through a /usr/bin/pi wrapper. This keeps the shipped runtime
+    pinned and reproducible.
+  * The build-time TypeScript toolchain (tsc, shx, @types/*) is NOT vendored;
+    it is fetched from npm at build time (loose semver). The build therefore
+    requires a network-enabled build worker and will not run on a fully
+    offline buildd.
+  * Target the distribution's nodejs 20.19: the vendored runtime declares a
+    stricter upstream floor (undici needs node >= 22.19), so the npm
+    engine-strict check is disabled at build time (--engine-strict=false) to
+    stop it aborting the build. This is a build-only override; it does not
+    change what the vendored runtime actually requires at run time.
+
+ -- Parrot Security <team@parrotsec.org>  Sun, 23 Aug 2026 20:00:00 +0200

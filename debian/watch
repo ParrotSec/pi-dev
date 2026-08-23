@@ -1,0 +1,24 @@
+version=4
+
+# Track upstream pi releases (GitHub: earendil-works/pi).
+#
+# The version list is read from the tags page. The download URL is then
+# rewritten (downloadurlmangle) to the versioned *source* archive attached to
+# the matching GitHub release:
+#   .../releases/download/v<version>/pi-<version>-source.tar.gz
+# That archive contains the generated provider model data so the build can run
+# fully offline.
+#
+# In downloadurlmangle the version is captured with (…) and re-inserted with
+# $1 (Perl s/// semantics); the @ANY_VERSION@/@VERSION@ shorthand is only valid
+# in the watch pattern and filenamemangle, NOT inside downloadurlmangle.
+#
+# uscan downloads and, for a "3.0 (quilt)" package, repacks to the package's
+# orig compression (xz), producing ../pi-dev_<version>.orig.tar.xz.
+
+opts="\
+filenamemangle=s%.*/v?@ANY_VERSION@\.tar\.gz%pi-dev-@VERSION@.tar.gz%,\
+downloadurlmangle=s%^.*/archive/refs/tags/v?(\d+\.\d+\.\d+)\.tar\.gz$%https://github.com/earendil-works/pi/releases/download/v$1/pi-$1-source.tar.gz%\
+" \
+  https://github.com/earendil-works/pi/tags \
+  .*/archive/refs/tags/v?@ANY_VERSION@\.tar\.gz

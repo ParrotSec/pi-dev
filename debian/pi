@@ -1,0 +1,8 @@
+#!/bin/sh
+# Debian wrapper for the pi coding agent.
+# Runs the Node.js entry point installed under /usr/lib/pi with the system
+# nodejs interpreter. User configuration and state live in ~/.pi by default
+# (override with PI_CODING_AGENT_DIR).
+PI_HOME="/usr/lib/pi"
+export PI_CODING_AGENT=1
+exec /usr/bin/node "$PI_HOME/packages/coding-agent/dist/cli.js" "$@"
