@@ -1,6 +1,88 @@
+pi-dev (0.84.3-0parrot2) echo; urgency=medium
+
+  * Run `pi` instead of `pi -r`.
+
+ -- Lorenzo "Palinuro" Faletra <palinuro@parrotsec.org>  Tue, 25 Aug 2026 03:30:17 +0200
+
+pi-dev (0.84.3-0parrot1) echo; urgency=medium
+
+  * Import new upstream release.
+
+ -- Lorenzo "Palinuro" Faletra <palinuro@parrotsec.org>  Tue, 25 Aug 2026 03:10:33 +0200
+
+pi-dev (0.84.2-0parrot7) unstable; urgency=medium
+
+  * Declare npm explicitly as a build dependency and suggest it for optional
+    npm-based extension installation.
+  * Correct debian/watch source archive naming, remove obsolete empty quilt
+    metadata and upstream Vcs fields, and improve build-artifact cleanup.
+  * Remove unsupported Terminal keys from desktop action groups; the primary
+    desktop entry remains a terminal application.
+
+ -- Lorenzo "Palinuro" Faletra <palinuro@parrotsec.org>  Tue, 24 Aug 2026 10:30:00 +0200
+
+pi-dev (0.84.2-0parrot6) unstable; urgency=medium
+
+  * Build Pi from source as its upstream-supported Bun standalone executable.
+    Fetch pinned Bun 1.3.14 at build time, install locked npm dependencies,
+    compile the workspace and image worker, and ship only the executable plus
+    required themes, assets, docs, templates, Photon WASM, and platform
+    clipboard addon.
+  * Drop the runtime node26 dependency and the vendored node_modules source
+    archive. Adapt /usr/bin/pi to execute /usr/lib/pi/pi and clear
+    BUN_BE_BUN. Disable dh_strip/dh_dwz because they corrupt Bun standalone
+    payloads.
+  * Preserve the desktop session picker (`pi -r`) and its New/Continue actions.
+  * Keep build smoke tests optional under DEB_BUILD_OPTIONS=nocheck and clean
+    all Bun/package staging artifacts from dirty source trees.
+  * Remove the old tsgo-to-tsc quilt patch series and custom tsconfig; the
+    locked upstream tsgo build works with node26 and keeps the source build
+    closer to upstream.
+  * Build-Depend on the versioned virtual nodejs (>= 22.19), currently
+    provided by node26, so later compatible Node providers work unchanged.
+
+ -- Lorenzo "Palinuro" Faletra <palinuro@parrotsec.org>  Tue, 24 Aug 2026 10:00:00 +0200
+
+pi-dev (0.84.2-0parrot5) unstable; urgency=medium
+
+  * Open the interactive session picker (`pi -r`) from the desktop launcher
+    by default. Add desktop actions for starting a new session and continuing
+    the most recent session.
+
+ -- Lorenzo "Palinuro" Faletra <palinuro@parrotsec.org>  Tue, 24 Aug 2026 07:30:00 +0200
+
+pi-dev (0.84.2-0parrot4) unstable; urgency=medium
+
+  * Add a terminal desktop launcher for Pi Coding Agent and install the
+    official Pi logo as a scalable application icon.
+
+ -- Lorenzo "Palinuro" Faletra <palinuro@parrotsec.org>  Tue, 24 Aug 2026 07:00:00 +0200
+
+pi-dev (0.84.2-0parrot3) unstable; urgency=medium
+
+  * Run on the distribution's new node26 package instead of bundling a
+    private Node.js runtime. node26 Provides nodejs (= 26.x) and installs
+    /usr/bin/node (>= 22) via update-alternatives, satisfying pi's
+    Node >= 22.19 requirement and its build-time `node foo.ts` codegen.
+  * Drop the bundled Node.js 22 runtime and the .node-toolchain download; the
+    package is now pure JavaScript under /usr/lib/pi plus the /usr/bin/pi
+    wrapper. Build-Depends and Depends now use node26.
+
+ -- Lorenzo "Palinuro" Faletra <palinuro@parrotsec.org>  Tue, 24 Aug 2026 00:45:00 +0200
+
 pi-dev (0.84.2-0parrot2) echo; urgency=medium
 
   * Rebuild package against nodejs 20.19
+  * Redirect HOME to a writable dir inside the build tree
+    (debian/fakehome) so npm's cache/logs/tmp work under sbuild, which sets
+    HOME=/sbuild-nonexistent (fixes EACCES "mkdir /sbuild-nonexistent").
+  * Bundle a private Node.js 22.19 runtime under /usr/lib/pi/node and run the
+    agent with it: pi requires Node >= 22.19 at run time (vendored undici@8)
+    and its build scripts execute .ts files directly (needs Node >= 22.6),
+    neither of which the distribution's nodejs 20.19 satisfies. The bundled
+    runtime is fetched at build time and used for the whole build, so the
+    packages/ai generate-models codegen and the engine checks work unmodified;
+    the engine-strict override is dropped. Removes the nodejs Depends.
 
  -- Lorenzo "Palinuro" Faletra <palinuro@parrotsec.org>  Sun, 23 Aug 2026 22:15:02 +0200
 

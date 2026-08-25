@@ -1,128 +1,113 @@
 #!/usr/bin/make -f
 
-# Debian rules for pi-dev.
+# Build pi from source as an upstream-supported Bun standalone executable.
 #
-# pi is a TypeScript npm workspaces monorepo. Upstream builds it with the
-# tsgo compiler (@typescript/native-preview), which is not packaged in
-# Debian; the debian/patches/* series rewrites the per-package build scripts
-# to use the classic `tsc` compiler and repoints the tsconfig "extends" to
-# debian/tsconfig.base.build.json (a build-time variant of tsconfig.base.json
-# with the tsgo-only flags removed and target raised to ES2024).
+# The source build uses Node/npm and upstream's pinned tsgo compiler for the
+# workspace build and TypeScript code generation, so nodejs >= 22.19 remains
+# a build dependency (currently provided by node26). Bun 1.3.14 is not
+# packaged in Debian and is downloaded as a pinned build tool. npm dependencies
+# are installed from package-lock.json.
 #
-# Dependencies are handled two ways:
-#   * Runtime dependencies (everything shipped in /usr/lib/pi) are VENDORED
-#     under debian/vendor/node_modules.tar.xz and installed verbatim; this
-#     keeps the shipped runtime pinned and reproducible.
-#   * The BUILD-TIME toolchain (the TypeScript compiler, shx and the @types/*
-#     needed to compile) is NOT vendored. It is fetched from npm at build time
-#     (npm install, loose semver) on top of the extracted runtime node_modules.
-#     This requires a network-enabled build worker (e.g. sbuild with network
-#     access); it will NOT build on a fully offline buildd.
-#
-# The toolchain is only a build tool: it never ships in the binary package, so
-# fetching it does not affect the reproducibility of the shipped runtime.
+# The binary package contains only the compiled Pi executable and the runtime
+# assets Pi deliberately resolves beside it. No system Node.js, Bun, or full
+# node_modules tree is required at runtime.
 
 export DH_VERBOSE = 1
-export NODE_PATH := $(CURDIR)/node_modules
+export HOME := $(CURDIR)/debian/fakehome
 
-# Packages that make up the runtime, in build order.
-PI_PACKAGES := tui telemetry ai agent protocol client server \
-	session-backends/sqlite-node coding-agent
+DEB_HOST_ARCH ?= $(shell dpkg-architecture -qDEB_HOST_ARCH)
 
-# Build-time toolchain fetched from npm (loose semver) during configure.
-# These are the tools/@types needed to compile but not present in the
-# vendored runtime node_modules.
-PI_BUILD_TOOLCHAIN := typescript shx \
-	@types/cross-spawn @types/diff @types/hosted-git-info @types/ms \
-	@types/proper-lockfile @types/semver
+BUN_VERSION := 1.3.14
+ifeq ($(DEB_HOST_ARCH),amd64)
+BUN_ARCHIVE := bun-linux-x64-baseline.zip
+BUN_DIR := bun-linux-x64-baseline
+BUN_SHA256 := a063908ae08b7852ca10939bbdc6ceed3ddabce8fb9402dce83d65d73b36e6c7
+CLIPBOARD_PACKAGE := clipboard-linux-x64-gnu
+CLIPBOARD_FILE := clipboard.linux-x64-gnu.node
+else ifeq ($(DEB_HOST_ARCH),arm64)
+BUN_ARCHIVE := bun-linux-aarch64.zip
+BUN_DIR := bun-linux-aarch64
+BUN_SHA256 := a27ffb63a8310375836e0d6f668ae17fa8d8d18b88c37c821c65331973a19a3b
+CLIPBOARD_PACKAGE := clipboard-linux-arm64-gnu
+CLIPBOARD_FILE := clipboard.linux-arm64-gnu.node
+else
+$(error pi-dev: unsupported DEB_HOST_ARCH $(DEB_HOST_ARCH))
+endif
+
+BUN_HOME := $(CURDIR)/debian/.bun-toolchain
+BUN_URL := https://github.com/oven-sh/bun/releases/download/bun-v$(BUN_VERSION)/$(BUN_ARCHIVE)
+BUN := $(BUN_HOME)/$(BUN_DIR)/bun
+PI_DIST := $(CURDIR)/packages/coding-agent/dist
 
 %:
 	dh $@
 
-# ----------------------------------------------------------------------------
-# Configure: lay down the vendored runtime node_modules (needed for the
-# compiler to type-check cross-package imports), then fetch the build-time
-# toolchain from npm over the network.
-# ----------------------------------------------------------------------------
 override_dh_auto_configure:
-	# Vendored runtime deps (also used for type-checking at build time).
-	tar -xJf debian/vendor/node_modules.tar.xz
-	# Build-time toolchain from the network (requires a network-enabled build).
-	# --engine-strict=false: the vendored runtime (e.g. undici) declares
-	# node>=22.19 while we build against the distro's nodejs 20.19; npm's
-	# engine check is only a warning by default, but force it off so it can
-	# never abort the build. This does NOT relax what the runtime needs.
-	npm install --no-save --ignore-scripts --no-audit --no-fund \
-		--engine-strict=false \
-		$(PI_BUILD_TOOLCHAIN)
-	cp debian/tsconfig.base.build.json tsconfig.base.build.json
-	dh_auto_configure
+	mkdir -p $(CURDIR)/debian/fakehome $(BUN_HOME)
+	curl --retry 5 --retry-all-errors -fSL -o "$(BUN_HOME)/$(BUN_ARCHIVE)" "$(BUN_URL)"
+	printf '%s  %s\n' '$(BUN_SHA256)' '$(BUN_ARCHIVE)' | \
+		(cd "$(BUN_HOME)" && sha256sum -c -)
+	unzip -q -o "$(BUN_HOME)/$(BUN_ARCHIVE)" -d "$(BUN_HOME)"
+	rm -f "$(BUN_HOME)/$(BUN_ARCHIVE)"
+	"$(BUN)" --version
+	# Locked source-build dependencies; lifecycle scripts are not required.
+	npm ci --ignore-scripts --no-audit --no-fund
 
-# ----------------------------------------------------------------------------
-# Build: compile each workspace package with tsc.
-# ----------------------------------------------------------------------------
 override_dh_auto_build:
-	set -e; \
-	for p in $(PI_PACKAGES); do \
-		echo "==> building packages/$$p"; \
-		( cd "packages/$$p" && PATH="$(CURDIR)/node_modules/.bin:$$PATH" npm run build --ignore-scripts ); \
-	done
+	# Compile every workspace from source using the model snapshot included in
+	# the upstream source release. This avoids mutable network-generated data.
+	PATH="$(dir $(BUN)):$(CURDIR)/node_modules/.bin:$$PATH" npm run build:offline
+	# Upstream standalone entrypoint plus the explicit image worker entrypoint.
+	cd packages/coding-agent && PATH="$(dir $(BUN)):$(CURDIR)/node_modules/.bin:$$PATH" \
+		bun build --compile --no-compile-autoload-bunfig \
+		./dist/bun/cli.js ./src/utils/image-resize-worker.ts --outfile dist/pi
+	# Copy only the runtime assets expected beside a Bun-compiled executable.
+	PATH="$(dir $(BUN)):$(CURDIR)/node_modules/.bin:$$PATH" \
+		npm --prefix packages/coding-agent run copy-binary-assets
+	# Stage the platform clipboard addon exactly as upstream release archives do.
+	mkdir -p "$(PI_DIST)/node_modules/@mariozechner/clipboard"
+	cp -a node_modules/@mariozechner/clipboard/. \
+		"$(PI_DIST)/node_modules/@mariozechner/clipboard/"
+	cp -a "node_modules/@mariozechner/$(CLIPBOARD_PACKAGE)/$(CLIPBOARD_FILE)" \
+		"$(PI_DIST)/node_modules/@mariozechner/clipboard/$(CLIPBOARD_FILE)"
 
-# ----------------------------------------------------------------------------
-# Test: skip the upstream test suite (requires LLM provider API keys).
-# ----------------------------------------------------------------------------
 override_dh_auto_test:
-	@echo "Skipping upstream test suite (requires LLM provider credentials)."
+	if echo " $(DEB_BUILD_OPTIONS) " | grep -q ' nocheck '; then \
+		echo "Skipping smoke tests (DEB_BUILD_OPTIONS contains nocheck)."; \
+		exit 0; \
+	fi
+	# The build already compiled and staged the executable. Smoke-test the
+	# standalone mode and session picker startup surface without provider keys.
+	env -u BUN_BE_BUN "$(PI_DIST)/pi" --version
+	env -u BUN_BE_BUN "$(PI_DIST)/pi" --help >/dev/null
 
-# ----------------------------------------------------------------------------
-# Install: stage the built runtime into /usr/lib/pi.
-# ----------------------------------------------------------------------------
 override_dh_auto_install:
-	set -e; \
-	LIBDIR=debian/pi-dev/usr/lib/pi; \
-	mkdir -p "$$LIBDIR/packages"; \
-	for p in tui telemetry ai agent protocol client server coding-agent; do \
-		echo "==> staging packages/$$p"; \
-		mkdir -p "$$LIBDIR/packages/$$p"; \
-		cp -a "packages/$$p/package.json" "$$LIBDIR/packages/$$p/"; \
-		cp -a "packages/$$p/dist" "$$LIBDIR/packages/$$p/"; \
-	done; \
-	echo "==> staging packages/sqlite-node"; \
-	mkdir -p "$$LIBDIR/packages/sqlite-node"; \
-	cp -a packages/session-backends/sqlite-node/package.json "$$LIBDIR/packages/sqlite-node/"; \
-	cp -a packages/session-backends/sqlite-node/dist "$$LIBDIR/packages/sqlite-node/"; \
-	echo "==> staging coding-agent runtime docs/examples/readme (read by the agent at runtime)"; \
-	for f in README.md CHANGELOG.md LICENSE; do \
-		[ -e "packages/coding-agent/$$f" ] && cp -a "packages/coding-agent/$$f" "$$LIBDIR/packages/coding-agent/" || true; \
-	done; \
-	for d in docs examples; do \
-		[ -d "packages/coding-agent/$$d" ] && cp -a "packages/coding-agent/$$d" "$$LIBDIR/packages/coding-agent/" || true; \
-	done; \
-	echo "==> staging vendored runtime node_modules"; \
-	tar -xJf debian/vendor/node_modules.tar.xz -C "$$LIBDIR"; \
-	rm -rf "$$LIBDIR/node_modules/.bin"; \
-	echo "==> trimming source/test content from staged packages (keep docs/examples)"; \
-	find "$$LIBDIR/packages" -type d \( -name src -o -name test -o -name tests -o -name __tests__ \) -prune -exec rm -rf {} + 2>/dev/null || true; \
-	find "$$LIBDIR/packages" -name '*.ts' ! -name '*.d.ts' -delete; \
-	find "$$LIBDIR/packages" -name '*.tsbuildinfo' -delete; \
-	echo "==> fixing @earendil-works workspace symlinks"; \
-	for l in "$$LIBDIR"/node_modules/@earendil-works/*; do \
-		[ -L "$$l" ] || continue; \
-		pkg=$$(basename "$$(readlink "$$l")"); \
-		ln -sfn "../../packages/$$pkg" "$$l"; \
-	done
+	install -d debian/pi-dev/usr/lib/pi debian/pi-dev/usr/bin
+	install -m 0755 "$(PI_DIST)/pi" debian/pi-dev/usr/lib/pi/pi
+	# Runtime assets deliberately resolved relative to process.execPath.
+	cp -a "$(PI_DIST)/package.json" "$(PI_DIST)/README.md" \
+		"$(PI_DIST)/CHANGELOG.md" "$(PI_DIST)/photon_rs_bg.wasm" \
+		"$(PI_DIST)/theme" "$(PI_DIST)/assets" "$(PI_DIST)/export-html" \
+		"$(PI_DIST)/docs" "$(PI_DIST)/examples" "$(PI_DIST)/node_modules" \
+		debian/pi-dev/usr/lib/pi/
+	install -m 0755 debian/pi debian/pi-dev/usr/bin/pi
+	install -D -m 0644 debian/pi-dev.desktop \
+		debian/pi-dev/usr/share/applications/pi-dev.desktop
+	install -D -m 0644 debian/pi-dev.svg \
+		debian/pi-dev/usr/share/icons/hicolor/scalable/apps/pi-dev.svg
 
-# ----------------------------------------------------------------------------
-# Clean.
-# ----------------------------------------------------------------------------
-override_dh_auto_clean:
-	rm -rf node_modules tsconfig.base.build.json
-	set -e; for p in $(PI_PACKAGES); do rm -rf "packages/$$p/dist"; done
-	dh_auto_clean
-
-# node_modules and dist are build artifacts; do not scan them for shlib deps.
-override_dh_shlibdeps:
-	@echo "Skipping dh_shlibdeps (JavaScript/WASM runtime, no ELF shared libs)."
-
+# Bun standalone executables append their module graph to the ELF. strip/dwz
+# remove or rewrite that payload and leave a plain Bun runtime.
 override_dh_strip:
-	@echo "Skipping dh_strip (no native ELF binaries to strip)."
+	@echo "Skipping dh_strip: it corrupts Bun standalone executables."
+	env -u BUN_BE_BUN debian/pi-dev/usr/lib/pi/pi --version
+
+override_dh_dwz:
+	@echo "Skipping dh_dwz: it is unsafe for Bun standalone executables."
+
+override_dh_auto_clean:
+	-dh_auto_clean
+	rm -rf node_modules debian/fakehome debian/.bun-toolchain debian/pi-dev
+	rm -rf packages/*/dist packages/session-backends/*/dist
+	find . -name '*.tsbuildinfo' -delete
+	rm -rf .artifacts

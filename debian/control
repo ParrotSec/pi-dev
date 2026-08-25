@@ -2,17 +2,16 @@ Source: pi-dev
 Section: devel
 Priority: optional
 Maintainer: Parrot Security <team@parrotsec.org>
-Build-Depends: debhelper-compat (= 13), nodejs (>= 20.19), npm
+Build-Depends: debhelper-compat (= 13), nodejs (>= 22.19), npm, curl,
+ ca-certificates, unzip
 Standards-Version: 4.7.2
 Rules-Requires-Root: no
 Homepage: https://pi.dev
-Vcs-Browser: https://github.com/earendil-works/pi
-Vcs-Git: https://github.com/earendil-works/pi.git
 
 Package: pi-dev
 Architecture: amd64 arm64
-Depends: nodejs (>= 20.19), ${misc:Depends}
-Suggests: git
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Suggests: npm, git, wl-clipboard | xclip | xsel
 Description: AI agent harness and interactive coding-agent CLI
  Pi (pi.dev) is an AI agent harness providing a unified multi-provider
  LLM API (OpenAI, Anthropic, Google, Bedrock, ...), an agent runtime with
@@ -26,7 +25,13 @@ Description: AI agent harness and interactive coding-agent CLI
  Configuration and per-user state live in ~/.pi (override with the
  PI_CODING_AGENT_DIR environment variable).
  .
- The TypeScript toolchain needed to build pi is fetched from npm at build
- time (the build needs network access); the npm runtime dependencies are
- vendored into the source package (debian/vendor/) so the shipped runtime is
- pinned and reproducible. The program runs on the system nodejs interpreter.
+ The package is built from source as a self-contained Bun executable. It has
+ no Node.js or Bun runtime dependency. Node.js >= 22.19 is used only during
+ the workspace build; Bun and locked npm dependencies are fetched at build
+ time, so the build requires a network-enabled worker. Runtime package data is
+ limited to the executable and the assets/extensions it resolves beside it;
+ the full build-time node_modules tree is not shipped.
+ .
+ Installing or updating npm-based Pi extensions invokes an external npm
+ command. Install npm for that optional functionality; the core coding agent
+ does not require it.

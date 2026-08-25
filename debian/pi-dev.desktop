@@ -1,0 +1,21 @@
+[Desktop Entry]
+Type=Application
+Name=Pi Coding Agent
+GenericName=AI Coding Agent
+Comment=Resume or start an interactive AI coding session
+Exec=pi
+TryExec=pi
+Icon=pi-dev
+Terminal=true
+Categories=Development;Utility;
+Keywords=AI;Coding;Agent;Terminal;
+StartupNotify=false
+Actions=NewSession;ContinueLatest;
+
+[Desktop Action NewSession]
+Name=New Session
+Exec=pi
+
+[Desktop Action ContinueLatest]
+Name=Continue Latest Session
+Exec=pi -c

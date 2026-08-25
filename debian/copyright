@@ -2,12 +2,12 @@ Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: pi
 Upstream-Contact: Mario Zechner <https://github.com/badlogicgames>
 Source: https://github.com/earendil-works/pi
-Comment: The upstream source is released under the MIT license. This package
- additionally vendors the program's npm runtime dependencies under
- debian/vendor/; per the packaging decision for this package the
- per-dependency copyright of the vendored node_modules content is not
- reproduced here. See each module's own package.json / LICENSE inside
- /usr/lib/pi/node_modules for its terms.
+Comment: The upstream source is released under the MIT license. The binary
+ package is built from source with `bun build --compile` and embeds the Bun
+ runtime and bundled JavaScript dependencies. Per the packaging decision for
+ this package, the per-dependency copyright of code embedded in the standalone
+ executable is not itemized here; see the upstream package-lock.json and each
+ dependency's own license for details.
 
 Files: *
 Copyright: 2024-2026 Mario Zechner and pi contributors

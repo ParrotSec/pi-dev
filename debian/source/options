@@ -3,4 +3,14 @@
 extend-diff-ignore = "(^|/)node_modules(/|$)"
 extend-diff-ignore = "(^|/)dist(/|$)"
 extend-diff-ignore = "\.tsbuildinfo$"
-extend-diff-ignore = "(^|/)tsconfig\.base\.build\.json$"
+# sbuild HOME redirect scratch dir (created during build).
+extend-diff-ignore = "(^|/)debian/fakehome(/|$)"
+tar-ignore = "debian/fakehome"
+# Downloaded Bun toolchain and package staging created during build.
+extend-diff-ignore = "(^|/)debian/\.bun-toolchain(/|$)"
+tar-ignore = "debian/.bun-toolchain"
+extend-diff-ignore = "(^|/)debian/pi-dev(/|$)"
+tar-ignore = "debian/pi-dev"
+extend-diff-ignore = "(^|/)\.artifacts(/|$)"
+tar-ignore = ".artifacts"
+tar-ignore = "*.tsbuildinfo"
