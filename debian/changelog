@@ -1,3 +1,13 @@
+pi-dev (0.87.1-0parrot2) echo; urgency=medium
+
+  * Adapt the native clipboard staging to upstream 0.87.1: the clipboard
+    addon moved from the removed @mariozechner/clipboard npm dependency into
+    the tui workspace package (packages/tui/native/linux/prebuilds). Stage the
+    whole committed prebuilds tree next to the executable, as upstream release
+    archives do, instead of copying per-arch npm artifacts.
+
+ -- Lorenzo "Palinuro" Faletra <palinuro@parrotsec.org>  Mon, 28 Sep 2026 23:30:32 +0200
+
 pi-dev (0.87.1-0parrot1) echo; urgency=medium
 
   * New upstream version 0.87.1

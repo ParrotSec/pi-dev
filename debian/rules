@@ -22,14 +22,10 @@ ifeq ($(DEB_HOST_ARCH),amd64)
 BUN_ARCHIVE := bun-linux-x64-baseline.zip
 BUN_DIR := bun-linux-x64-baseline
 BUN_SHA256 := a063908ae08b7852ca10939bbdc6ceed3ddabce8fb9402dce83d65d73b36e6c7
-CLIPBOARD_PACKAGE := clipboard-linux-x64-gnu
-CLIPBOARD_FILE := clipboard.linux-x64-gnu.node
 else ifeq ($(DEB_HOST_ARCH),arm64)
 BUN_ARCHIVE := bun-linux-aarch64.zip
 BUN_DIR := bun-linux-aarch64
 BUN_SHA256 := a27ffb63a8310375836e0d6f668ae17fa8d8d18b88c37c821c65331973a19a3b
-CLIPBOARD_PACKAGE := clipboard-linux-arm64-gnu
-CLIPBOARD_FILE := clipboard.linux-arm64-gnu.node
 else
 $(error pi-dev: unsupported DEB_HOST_ARCH $(DEB_HOST_ARCH))
 endif
@@ -64,22 +60,26 @@ override_dh_auto_build:
 	# Copy only the runtime assets expected beside a Bun-compiled executable.
 	PATH="$(dir $(BUN)):$(CURDIR)/node_modules/.bin:$$PATH" \
 		npm --prefix packages/coding-agent run copy-binary-assets
-	# Stage the platform clipboard addon exactly as upstream release archives do.
-	mkdir -p "$(PI_DIST)/node_modules/@mariozechner/clipboard"
-	cp -a node_modules/@mariozechner/clipboard/. \
-		"$(PI_DIST)/node_modules/@mariozechner/clipboard/"
-	cp -a "node_modules/@mariozechner/$(CLIPBOARD_PACKAGE)/$(CLIPBOARD_FILE)" \
-		"$(PI_DIST)/node_modules/@mariozechner/clipboard/$(CLIPBOARD_FILE)"
+	# Stage the native platform helpers exactly as upstream release archives
+	# do. Since 0.87.1 the clipboard addon is maintained in the tui workspace
+	# package (packages/tui/native/linux/prebuilds/...), no longer as an npm
+	# dependency. The whole committed prebuilds tree is copied unfiltered: the
+	# runtime selects its own architecture directory, so no arch mapping is
+	# hardcoded here.
+	mkdir -p "$(PI_DIST)/native/linux/prebuilds"
+	cp -a packages/tui/native/linux/prebuilds/. \
+		"$(PI_DIST)/native/linux/prebuilds/"
 
 override_dh_auto_test:
 	if echo " $(DEB_BUILD_OPTIONS) " | grep -q ' nocheck '; then \
 		echo "Skipping smoke tests (DEB_BUILD_OPTIONS contains nocheck)."; \
 		exit 0; \
 	fi
-	# The build already compiled and staged the executable. Smoke-test the
-	# standalone mode and session picker startup surface without provider keys.
+	# Smoke-test the standalone mode and session picker startup surface without
+	# provider keys, plus the native helper layout the runtime expects.
 	env -u BUN_BE_BUN "$(PI_DIST)/pi" --version
 	env -u BUN_BE_BUN "$(PI_DIST)/pi" --help >/dev/null
+	find "$(PI_DIST)/native" -name '*.node' -print -quit | grep -q .
 
 override_dh_auto_install:
 	install -d debian/pi-dev/usr/lib/pi debian/pi-dev/usr/bin
@@ -88,7 +88,7 @@ override_dh_auto_install:
 	cp -a "$(PI_DIST)/package.json" "$(PI_DIST)/README.md" \
 		"$(PI_DIST)/CHANGELOG.md" "$(PI_DIST)/photon_rs_bg.wasm" \
 		"$(PI_DIST)/theme" "$(PI_DIST)/assets" "$(PI_DIST)/export-html" \
-		"$(PI_DIST)/docs" "$(PI_DIST)/examples" "$(PI_DIST)/node_modules" \
+		"$(PI_DIST)/docs" "$(PI_DIST)/examples" "$(PI_DIST)/native" \
 		debian/pi-dev/usr/lib/pi/
 	install -m 0755 debian/pi debian/pi-dev/usr/bin/pi
 	install -D -m 0644 debian/pi-dev.desktop \
