@@ -22,10 +22,12 @@ ifeq ($(DEB_HOST_ARCH),amd64)
 BUN_ARCHIVE := bun-linux-x64-baseline.zip
 BUN_DIR := bun-linux-x64-baseline
 BUN_SHA256 := a063908ae08b7852ca10939bbdc6ceed3ddabce8fb9402dce83d65d73b36e6c7
+NATIVE_PREBUILD := linux-x64
 else ifeq ($(DEB_HOST_ARCH),arm64)
 BUN_ARCHIVE := bun-linux-aarch64.zip
 BUN_DIR := bun-linux-aarch64
 BUN_SHA256 := a27ffb63a8310375836e0d6f668ae17fa8d8d18b88c37c821c65331973a19a3b
+NATIVE_PREBUILD := linux-arm64
 else
 $(error pi-dev: unsupported DEB_HOST_ARCH $(DEB_HOST_ARCH))
 endif
@@ -60,14 +62,15 @@ override_dh_auto_build:
 	# Copy only the runtime assets expected beside a Bun-compiled executable.
 	PATH="$(dir $(BUN)):$(CURDIR)/node_modules/.bin:$$PATH" \
 		npm --prefix packages/coding-agent run copy-binary-assets
-	# Stage the native platform helpers exactly as upstream release archives
-	# do. Since 0.87.1 the clipboard addon is maintained in the tui workspace
-	# package (packages/tui/native/linux/prebuilds/...), no longer as an npm
-	# dependency. The whole committed prebuilds tree is copied unfiltered: the
-	# runtime selects its own architecture directory, so no arch mapping is
-	# hardcoded here.
+	# Stage the host architecture's native platform helper exactly as upstream
+	# release archives do. Since 0.87.1 the clipboard addon is maintained in
+	# the tui workspace package (packages/tui/native/linux/prebuilds/...), no
+	# longer as an npm dependency; the runtime resolves the directory matching
+	# process.arch beside the executable. Only the host architecture is staged:
+	# the other architecture's ELF can never load on this host and would make
+	# dpkg-shlibdeps fail on foreign-ABI NEEDED entries.
 	mkdir -p "$(PI_DIST)/native/linux/prebuilds"
-	cp -a packages/tui/native/linux/prebuilds/. \
+	cp -a "packages/tui/native/linux/prebuilds/$(NATIVE_PREBUILD)" \
 		"$(PI_DIST)/native/linux/prebuilds/"
 
 override_dh_auto_test:

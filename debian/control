@@ -3,7 +3,7 @@ Section: devel
 Priority: optional
 Maintainer: Parrot Security <team@parrotsec.org>
 Build-Depends: debhelper-compat (= 13), nodejs (>= 22.19), npm, curl,
- ca-certificates, unzip
+ ca-certificates, unzip, libxcb1
 Standards-Version: 4.7.2
 Rules-Requires-Root: no
 Homepage: https://pi.dev

@@ -1,3 +1,14 @@
+pi-dev (0.87.1-0parrot3) echo; urgency=medium
+
+  * Fix dh_shlibdeps failure: stage only the host architecture's native
+    prebuild next to the executable (the other architecture's ELF is never
+    loaded and its foreign-ABI NEEDED entries make dpkg-shlibdeps fail),
+    matching what upstream release archives ship per platform.
+  * Build-Depend on libxcb1 so dpkg-shlibdeps can resolve the native addon's
+    NEEDED entries and register the runtime dependency automatically.
+
+ -- Lorenzo "Palinuro" Faletra <palinuro@parrotsec.org>  Mon, 28 Sep 2026 23:42:08 +0200
+
 pi-dev (0.87.1-0parrot2) echo; urgency=medium
 
   * Adapt the native clipboard staging to upstream 0.87.1: the clipboard
