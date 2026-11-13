@@ -55,10 +55,12 @@ override_dh_auto_build:
 	# Compile every workspace from source using the model snapshot included in
 	# the upstream source release. This avoids mutable network-generated data.
 	PATH="$(dir $(BUN)):$(CURDIR)/node_modules/.bin:$$PATH" npm run build:offline
-	# Upstream standalone entrypoint plus the explicit image worker entrypoint.
+	# Upstream standalone entrypoints: the CLI, the explicit image resize worker
+	# and the codemode QuickJS worker (resolved beside the executable at runtime).
 	cd packages/coding-agent && PATH="$(dir $(BUN)):$(CURDIR)/node_modules/.bin:$$PATH" \
 		bun build --compile --no-compile-autoload-bunfig \
-		./dist/bun/cli.js ./src/utils/image-resize-worker.ts --outfile dist/pi
+		./dist/bun/cli.js ./src/utils/image-resize-worker.ts \
+		./src/extensions/codemode/worker.ts --outfile dist/pi
 	# Copy only the runtime assets expected beside a Bun-compiled executable.
 	PATH="$(dir $(BUN)):$(CURDIR)/node_modules/.bin:$$PATH" \
 		npm --prefix packages/coding-agent run copy-binary-assets

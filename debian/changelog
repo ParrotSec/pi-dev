@@ -1,3 +1,11 @@
+pi-dev (1.5.2-0parrot1) echo; urgency=medium
+
+  * New upstream version 1.5.2
+  * debian/rules: bundle the codemode QuickJS worker as a third bun-
+    build entrypoint, matching upstream build:binary
+
+ -- Lorenzo "Palinuro" Faletra <palinuro@parrotsec.org>  Fri, 13 Nov 2026 23:57:21 +0100
+
 pi-dev (1.5.0-0parrot1) echo; urgency=medium
 
   * New upstream version 1.5.0
