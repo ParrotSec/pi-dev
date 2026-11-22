@@ -1,3 +1,9 @@
+pi-dev (1.6.0-0parrot1) echo; urgency=medium
+
+  * New upstream version 1.6.0
+
+ -- Lorenzo "Palinuro" Faletra <palinuro@parrotsec.org>  Sun, 22 Nov 2026 17:01:19 +0100
+
 pi-dev (1.5.2-0parrot1) echo; urgency=medium
 
   * New upstream version 1.5.2
